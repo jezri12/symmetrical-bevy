@@ -1,0 +1,125 @@
+
+use bevy::core_pipeline::clear_color::ClearColorConfig;
+use bevy::prelude::*;
+use bevy::render::camera::*;
+use rand::Rng;
+
+mod pig;
+
+fn main() {
+    App::new()
+        .add_plugins(
+            DefaultPlugins
+                .set(ImagePlugin::default_nearest())
+                .set(WindowPlugin {
+                    primary_window: Some(Window {
+                        title: "Logic Farming Rougelike".into(),
+                        resolution: (640.0, 480.0).into(),
+                        resizable: false,
+                        ..default()
+                    }),
+                    ..default()
+                })
+                .build(),
+        )
+        .insert_resource(Money(100.0))
+        .add_systems(Startup, setup)
+        .add_systems(Update, (character_movement, spawn_pig, pig_lifetime, idle_movement_logic))
+        .run();
+}
+
+#[derive(Component)]
+pub struct Player {
+    pub speed: f32
+}
+
+
+#[derive(Component)]
+pub struct IdleMovement {
+    pub speed: Vec2,
+    pub change_dir_x: Timer,
+    pub change_dir_y: Timer,
+    pub right: bool,
+    pub down: bool,
+}
+
+#[derive(Resource)]
+pub struct Money(pub f32);
+
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let mut camera = Camera2dBundle::default();
+
+    camera.projection.scaling_mode = ScalingMode::AutoMin {
+	min_width: 256.0,
+	min_height: 144.0
+    };
+
+    camera.camera_2d.clear_color = ClearColorConfig::Custom(Color::OLIVE);
+
+    commands.spawn(camera);
+
+    let texture = asset_server.load("character.png");
+
+    commands.spawn((
+        SpriteBundle {
+            texture,
+            ..default()
+        },
+        Player { speed: 100.0 },
+    ));
+}
+
+fn character_movement(
+    mut characters: Query<(&mut Transform, &Player)>,
+    input: Res<Input<KeyCode>>,
+    time: Res<Time>,
+) {
+    for (mut transform, player) in &mut characters {
+        let movement_amount: f32 = player.speed * time.delta_seconds();
+
+        if input.pressed(KeyCode::W) {
+            transform.translation.y += movement_amount;
+        }
+        if input.pressed(KeyCode::S) {
+            transform.translation.y -= movement_amount;
+        }
+        if input.pressed(KeyCode::D) {
+            transform.translation.x += movement_amount;
+        }
+        if input.pressed(KeyCode::A) {
+            transform.translation.x -= movement_amount;  
+        }
+    }
+}
+
+
+fn idle_movement_logic(
+    time: Res<Time>,
+    mut things: Query<(&mut Transform, &mut IdleMovement)> ,
+){
+    for (mut transform, mut idle_movement)  in &mut things {
+	let movement_amount = idle_movement.speed * time.delta_seconds();
+
+	if idle_movement.right {
+	    transform.translation.x += movement_amount.x;
+	} else {
+	    transform.translation.x -= movement_amount.x;
+	}
+
+	if idle_movement.down {
+	    transform.translation.y += movement_amount.y;
+	} else {
+	    transform.translation.y -= movement_amount.y;
+	}
+
+	idle_movement.change_dir_x.tick(time.delta());
+	idle_movement.change_dir_y.tick(time.delta());
+
+	if idle_movement.change_dir_x.just_finished() {
+	    idle_movement.right = !idle_movement.right;
+	}
+	if idle_movement.change_dir_y.just_finished() {
+	    idle_movement.down = !idle_movement.down;
+	}
+    }
+}

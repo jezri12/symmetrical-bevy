@@ -1,0 +1,10 @@
+use bevy::prelude::*;
+
+#[derive(Component)]
+pub struct IdleMovement {
+    pub speed: Vec2,
+    pub change_dir_x: Timer,
+    pub change_dir_y: Timer,
+    pub right: bool,
+    pub down: bool,
+}

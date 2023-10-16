@@ -1,0 +1,5 @@
+pub struct GameUI;
+
+impl Plugin for GameUI {
+    
+}
